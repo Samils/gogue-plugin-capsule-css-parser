@@ -111,6 +111,8 @@ namespace Sammy\Packs\Gogue\Plugin\Capsule\CapsuleCssParser {
 
         $componentData ['block'] = preg_replace ($blockVariableDeclarationRe, '', $componentData ['block']);
 
+        $argumentNameList = [];
+
         #print_r ($componentData);
 
         foreach ($componentData ['componentArguments'] as $argumentName => $argumentDefaultValue) {
@@ -123,6 +125,7 @@ namespace Sammy\Packs\Gogue\Plugin\Capsule\CapsuleCssParser {
 
           $argumentCode = "\t\$scope->$argumentName = !(isset (\$args ['$argumentName'])) ? $argumentDefaultValue : \$args ['$argumentName'];";
 
+          array_push ($argumentNameList, "'$argumentName'");
           array_push ($arguments, $argumentCode);
         }
 
@@ -135,6 +138,8 @@ namespace Sammy\Packs\Gogue\Plugin\Capsule\CapsuleCssParser {
 
         $componentStyles = $this->generateStyles ($componentStyleData);
 
+        $argumentNameList = join (',', array_merge ($argumentNameList, ['\'children\'']));
+
         # REVIEW
         # $componentStyles = preg_replace_callback ($strRe, [$this, 'formatStrData'], $componentStyles);
 
@@ -142,7 +147,7 @@ namespace Sammy\Packs\Gogue\Plugin\Capsule\CapsuleCssParser {
           "Capsule::Def ('{$componentData['componentName']}', function (\$args, CapsuleScopeContext \$scope) {",
           join ("\n", $arguments),
           "\n\t\$scope->componentSelectorReference = call_user_func ('App\View\generateComponentSelectorRef', '{$componentData['componentName']}');",
-          "\treturn Capsule::PartialRender ('Fragment', [], Capsule::CreateElement ('head', [], Capsule::CreateElement ('style', ['data-styled-component' => '{$componentData['componentName']}', 'data-styled-component-id' => \$scope->componentSelectorReference, 'type' => 'text/css'], function (\$args, CapsuleScopeContext \$scope) {return '$componentStyles';})), Capsule::CreateElement ('{$componentData['componentTagName']}', ['{$componentData['componentTagSelectorAttribute']}' => \$scope->componentSelectorReference], Capsule::Yield (null, [])));",
+          "\treturn Capsule::PartialRender ('Fragment', [], Capsule::CreateElement ('head', [], Capsule::CreateElement ('style', ['data-styled-component' => '{$componentData['componentName']}', 'data-styled-component-id' => \$scope->componentSelectorReference, 'type' => 'text/css'], function (\$args, CapsuleScopeContext \$scope) {return '$componentStyles';})), Capsule::CreateElement ('{$componentData['componentTagName']}', array_merge (ArrayHelper::PropsBeyond ([{$argumentNameList}], \$args), ['{$componentData['componentTagSelectorAttribute']}' => join (' ', [\$scope->componentSelectorReference, ((isset (\$args ['{$componentData['componentTagSelectorAttribute']}']) && is_string (\$args ['{$componentData['componentTagSelectorAttribute']}'])) ? \$args ['{$componentData['componentTagSelectorAttribute']}'] : '')])]), Capsule::Yield (null, [])));",
           "});\n",
 
           "Capsule::Export ('{$componentData['componentName']}');\n\n"
