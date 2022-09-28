@@ -67,6 +67,7 @@ namespace Sammy\Packs\Gogue\Plugin\Capsule\CapsuleCssParser {
         $parentReference = is_array ($parentReference) ? join ('', $parentReference) : '';
       }
 
+      $currentReference = '';
       $blockEncoder = new BlockEncoder;
 
       if (preg_match ('/([^\{]+)/', $block, $match)) {
@@ -102,14 +103,18 @@ namespace Sammy\Packs\Gogue\Plugin\Capsule\CapsuleCssParser {
       # $block = $componentData ['block'];
 
       $nestedBlockRe = '/(.+)\s*::=block-block([0-9]+)::/i';
+      $mediaQueryRe = '/(\@media(\s+.+)?(::=group-block([0-9]+)::(\s+and)?)*)(::=block-block([0-9]+)::)/i';
 
       if (preg_match_all ($nestedBlockRe, $block, $nestedBlocksMatches)) {}
+
+      if (preg_match_all ($mediaQueryRe, $block, $mediaQueryMatches)) {}
 
       if (!empty ($parentReference)) {
         $parentReference = $parentReference . ' ';
       }
 
       $block = preg_replace ($nestedBlockRe, '', $block);
+      $block = preg_replace ($mediaQueryRe, '', $block);
 
       $block = preg_replace_callback ('/\:\s*([^;]+)/', [$this, 'formatStyleValue'], $block);
 
@@ -121,6 +126,27 @@ namespace Sammy\Packs\Gogue\Plugin\Capsule\CapsuleCssParser {
         foreach ($nestedBlocksMatches [0] as $nestedBlock) {
           $block .= $this->generateStyles ($blockEncoder->decodeBlock ($nestedBlock, $this->store), $nestedBlocksParentRef . ' ');
         }
+      }
+
+      if ($mediaQueryMatches && count ($mediaQueryMatches) >= 1) {
+        foreach ($mediaQueryMatches [1] as $mediaQueryIndex => $mediaQuery) {
+          $mediaQueryBlock = $mediaQueryMatches [6][$mediaQueryIndex];
+
+          $mediaQueryBlock = $blockEncoder->decodeBlock ($mediaQueryBlock, $this->store);
+
+          $mediaQueryBlock = join ('', [$currentReference, $mediaQueryBlock]);
+
+          $mediaQueryBlockStyles = $this->generateStyles ($mediaQueryBlock);
+
+          $block .= join ('', [$mediaQuery, '{', $mediaQueryBlockStyles, '}']);
+
+        }
+
+        #echo "current ref => $currentReference\nParent Ref => $parentReference\n\n";
+
+        #print_r($mediaQueryMatches);
+
+        #exit (0);
       }
 
       $block = $this->minifyCss ($block);
