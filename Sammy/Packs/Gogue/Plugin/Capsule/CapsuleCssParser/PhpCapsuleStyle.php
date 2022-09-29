@@ -111,7 +111,7 @@ namespace Sammy\Packs\Gogue\Plugin\Capsule\CapsuleCssParser {
       if (preg_match_all ($nestedBlockRe, $block, $nestedBlocksMatches)) {}
       $block = preg_replace ($nestedBlockRe, '', $block);
 
-      $block = preg_replace_callback ('/\:\s*([^;]+)/', [$this, 'formatStyleValue'], $block);
+      $block = preg_replace_callback ('/([a-zA-Z0-9_\-]+)\:\s*([^;]+)/', [$this, 'formatStyleKeyValuePair'], $block);
 
       $block = join ('', [
         $parentReference, $block
@@ -200,17 +200,47 @@ namespace Sammy\Packs\Gogue\Plugin\Capsule\CapsuleCssParser {
       return $cssCode;
     }
 
-    private function formatStyleValue ($match) {
-      if (preg_match ('/^(([a-zA-Z0-9_\-\s\#]+)|var\s*::=group-block([0-9]+)::)$/', trim ($match [1]))) {
-        return $match [0];
+    private function formatStyleValue ($value) {
+      $re = '/^(([a-zA-Z0-9_\-\s\#]+)|var\s*::=group-block([0-9]+)::)$/';
+
+      if (preg_match ($re, trim ($value))) {
+        return $value;
       }
 
       $strRe = '/::\$([0-9]+):/';
-      $styleValueMatch = preg_replace_callback ($strRe, [$this, 'formatStrData'], $match [1]);
+      $styleValueMatch = preg_replace_callback ($strRe, [$this, 'formatStrData'], $value);
 
-      $value = "'.call_user_func (function (\$str) {return \$str;}, '{$styleValueMatch}').'";
+      return "'.call_user_func (function (\$str) {return \$str;}, '{$styleValueMatch}').'";
+    }
 
-      return join (' ', [':', $value]);
+    private function formatStyleKeyValuePair ($match) {
+
+      $styleKeyToRewrite = [
+        'border-radius',
+        'background-size'
+      ];
+
+      $styleKeyPrefixList = [
+        '', '-webkit-', '-moz-', '-o-', '-ms-'
+      ];
+
+
+      $key = strtolower (trim ($match [1]));
+      $value = $this->formatStyleValue ($match [2]);
+
+      if (in_array ($key, $styleKeyToRewrite)) {
+        $styleKeyValuePairs = [];
+
+        foreach ($styleKeyPrefixList as $styleKeyPrefix) {
+          $styleKey = join ('', [$styleKeyPrefix, $key]);
+
+          array_push ($styleKeyValuePairs, join (':', [$styleKey, $value]));
+        }
+
+        return join(';', $styleKeyValuePairs);
+      }
+
+      return join (':', [$key, $value]);
     }
   }}
 }
