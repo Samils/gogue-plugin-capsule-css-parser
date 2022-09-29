@@ -95,17 +95,10 @@ namespace Sammy\Packs\Gogue\Plugin\Capsule\CapsuleCssParser {
         ]);
       }
 
-      # echo "\n\n\n\n\n\n\n\n";
-      # print ($nestedBlocksParentRef);
-      # echo "\n\n\n\n\n\n\n\n";
-
-
       # $block = $componentData ['block'];
 
       $nestedBlockRe = '/(.+)\s*::=block-block([0-9]+)::/i';
       $mediaQueryRe = '/(\@media(\s+.+)?(::=group-block([0-9]+)::(\s+and)?)*)(::=block-block([0-9]+)::)/i';
-
-      if (preg_match_all ($nestedBlockRe, $block, $nestedBlocksMatches)) {}
 
       if (preg_match_all ($mediaQueryRe, $block, $mediaQueryMatches)) {}
 
@@ -113,8 +106,10 @@ namespace Sammy\Packs\Gogue\Plugin\Capsule\CapsuleCssParser {
         $parentReference = $parentReference . ' ';
       }
 
-      $block = preg_replace ($nestedBlockRe, '', $block);
       $block = preg_replace ($mediaQueryRe, '', $block);
+
+      if (preg_match_all ($nestedBlockRe, $block, $nestedBlocksMatches)) {}
+      $block = preg_replace ($nestedBlockRe, '', $block);
 
       $block = preg_replace_callback ('/\:\s*([^;]+)/', [$this, 'formatStyleValue'], $block);
 
@@ -129,15 +124,20 @@ namespace Sammy\Packs\Gogue\Plugin\Capsule\CapsuleCssParser {
       }
 
       if ($mediaQueryMatches && count ($mediaQueryMatches) >= 1) {
+
         foreach ($mediaQueryMatches [1] as $mediaQueryIndex => $mediaQuery) {
           $mediaQueryBlock = $mediaQueryMatches [6][$mediaQueryIndex];
 
           $mediaQueryBlock = $blockEncoder->decodeBlock ($mediaQueryBlock, $this->store);
 
-          $mediaQueryBlock = join ('', [$currentReference, $mediaQueryBlock]);
+          $mediaQueryBlock = join ('', [$nestedBlocksParentRef, $mediaQueryBlock]);
+
+          #exit ($mediaQueryBlock);
 
           $mediaQueryBlockStyles = $this->generateStyles ($mediaQueryBlock);
 
+          #echo "\n\nBlock => ", $mediaQueryBlock, "\nresult => ", $mediaQueryBlockStyles, "\n\n\n\n\n\n\n\n";
+          #echo "\n\n\n\n\n", join ('', [$mediaQuery, '{', $mediaQueryBlockStyles, '}']), "\n\n\n\n\n\n\n\n";
           $block .= join ('', [$mediaQuery, '{', $mediaQueryBlockStyles, '}']);
 
         }
