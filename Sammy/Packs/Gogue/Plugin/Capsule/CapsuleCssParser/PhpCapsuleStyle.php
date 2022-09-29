@@ -226,7 +226,17 @@ namespace Sammy\Packs\Gogue\Plugin\Capsule\CapsuleCssParser {
 
 
       $key = strtolower (trim ($match [1]));
-      $value = $this->formatStyleValue ($match [2]);
+      $value = ($match [2]);
+
+      $keyToValiableName = $this->rewriteComponentArgumentName ($key);
+
+      $keyParserMethodRef = join ('', ['read', $keyToValiableName, 'StyleKey']);
+
+      if (method_exists ($this, $keyParserMethodRef)) {
+        $value = call_user_func_array ([$this, $keyParserMethodRef], [$value]);
+      } else {
+        $value = $this->formatStyleValue ($value);
+      }
 
       if (in_array ($key, $styleKeyToRewrite)) {
         $styleKeyValuePairs = [];
