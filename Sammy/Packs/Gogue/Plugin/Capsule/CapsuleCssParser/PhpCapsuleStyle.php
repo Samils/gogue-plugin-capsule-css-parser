@@ -70,7 +70,7 @@ namespace Sammy\Packs\Gogue\Plugin\Capsule\CapsuleCssParser {
       $currentReference = '';
       $blockEncoder = new BlockEncoder;
 
-      if (preg_match ('/([^\{]+)/', $block, $match)) {
+      if (preg_match ('/^([^\{]+)/', $block, $match)) {
 
         $specialCharRe = '/^\s*(\&):/';
         $currentReference = ' ' . trim ($match [0]);
@@ -95,12 +95,19 @@ namespace Sammy\Packs\Gogue\Plugin\Capsule\CapsuleCssParser {
         ]);
       }
 
+      $block = preg_replace ('/^([^\{]+)\s*\{\s*/', '', $block);
+      $block = preg_replace ('/(\s*\}\s*)$/', '', $block);
+
       # $block = $componentData ['block'];
 
       $nestedBlockRe = '/(.+)\s*::=block-block([0-9]+)::/i';
       $mediaQueryRe = '/(\@media(\s+.+)?(::=group-block([0-9]+)::(\s+and)?)*)(::=block-block([0-9]+)::)/i';
 
-      if (preg_match_all ($mediaQueryRe, $block, $mediaQueryMatches)) {}
+      /**
+       * get whole the mediaQueryRe from the current block
+       * content
+       */
+      preg_match_all ($mediaQueryRe, $block, $mediaQueryMatches);
 
       if (!empty ($parentReference)) {
         $parentReference = $parentReference . ' ';
@@ -108,13 +115,18 @@ namespace Sammy\Packs\Gogue\Plugin\Capsule\CapsuleCssParser {
 
       $block = preg_replace ($mediaQueryRe, '', $block);
 
-      if (preg_match_all ($nestedBlockRe, $block, $nestedBlocksMatches)) {}
+      /**
+       * get whole the nestedBlockRe from the current block
+       * content
+       */
+      preg_match_all ($nestedBlockRe, $block, $nestedBlocksMatches);
+
       $block = preg_replace ($nestedBlockRe, '', $block);
 
       $block = preg_replace_callback ('/([a-zA-Z0-9_\-]+)\:\s*([^;]+)/', [$this, 'formatStyleKeyValuePair'], $block);
 
       $block = join ('', [
-        $parentReference, $block
+        $parentReference, $currentReference, '{', $block, '}'
       ]);
 
       if (is_array ($nestedBlocksMatches [0]) && count ($nestedBlocksMatches [0]) >= 1) {
@@ -154,6 +166,17 @@ namespace Sammy\Packs\Gogue\Plugin\Capsule\CapsuleCssParser {
       $block = $this->parseCssVarRefs ($block);
 
       return $blockEncoder->decodeBlocks ($block, $this->store);
+    }
+
+    /**
+     * @method string
+     *
+     * Generate global styles
+     */
+    private function generateGlobalStyles ($block) {
+      $blockStyles = $this->generateStyles (' ' . $block);
+
+      return preg_replace ('/\s*\{\s*\}\s*/', '', $blockStyles);
     }
 
     /**
@@ -217,7 +240,8 @@ namespace Sammy\Packs\Gogue\Plugin\Capsule\CapsuleCssParser {
 
       $styleKeyToRewrite = [
         'border-radius',
-        'background-size'
+        'background-size',
+        'background-clip'
       ];
 
       $styleKeyPrefixList = [

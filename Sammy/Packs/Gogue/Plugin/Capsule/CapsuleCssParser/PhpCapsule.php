@@ -136,22 +136,38 @@ namespace Sammy\Packs\Gogue\Plugin\Capsule\CapsuleCssParser {
           $componentData ['block']
         ]);
 
-        $componentStyles = $this->generateStyles ($componentStyleData);
-
         $argumentNameList = join (',', array_merge ($argumentNameList, ['\'children\'']));
+
+        if (in_array (strtolower ($componentData ['componentTagName']), ['global'])) {
+          $componentStyles = $this->generateGlobalStyles ($componentData ['block']);
+
+          array_push ($phpCapsuleCode, join ("\n", [
+            "Capsule::Def ('{$componentData['componentName']}', function (\$args, CapsuleScopeContext \$scope) {",
+            join ("\n", $arguments),
+            "\n\t\$scope->componentSelectorReference = call_user_func ('App\View\generateComponentSelectorRef', '{$componentData['componentName']}');",
+            "\treturn Capsule::PartialRender ('Fragment', [], Capsule::CreateElement ('head', [], Capsule::CreateElement ('style', ['data-styled-component' => '{$componentData['componentName']}', 'data-styled-component-id' => \$scope->componentSelectorReference, 'type' => 'text/css'], function (\$args, CapsuleScopeContext \$scope) {return '$componentStyles';})));",
+            "});\n",
+
+            "Capsule::Export ('{$componentData['componentName']}');\n\n"
+          ]));
+        } else {
+          $componentStyles = $this->generateStyles ($componentStyleData);
+
+          array_push ($phpCapsuleCode, join ("\n", [
+            "Capsule::Def ('{$componentData['componentName']}', function (\$args, CapsuleScopeContext \$scope) {",
+            join ("\n", $arguments),
+            "\n\t\$scope->componentSelectorReference = call_user_func ('App\View\generateComponentSelectorRef', '{$componentData['componentName']}');",
+            "\treturn Capsule::PartialRender ('Fragment', [], Capsule::CreateElement ('head', [], Capsule::CreateElement ('style', ['data-styled-component' => '{$componentData['componentName']}', 'data-styled-component-id' => \$scope->componentSelectorReference, 'type' => 'text/css'], function (\$args, CapsuleScopeContext \$scope) {return '$componentStyles';})), Capsule::CreateElement ('{$componentData['componentTagName']}', array_merge (ArrayHelper::PropsBeyond ([{$argumentNameList}], \$args), ['{$componentData['componentTagSelectorAttribute']}' => join (' ', [\$scope->componentSelectorReference, ((isset (\$args ['{$componentData['componentTagSelectorAttribute']}']) && is_string (\$args ['{$componentData['componentTagSelectorAttribute']}'])) ? \$args ['{$componentData['componentTagSelectorAttribute']}'] : '')])]), Capsule::Yield (null, [])));",
+            "});\n",
+
+            "Capsule::Export ('{$componentData['componentName']}');\n\n"
+          ]));
+        }
 
         # REVIEW
         # $componentStyles = preg_replace_callback ($strRe, [$this, 'formatStrData'], $componentStyles);
 
-        array_push ($phpCapsuleCode, join ("\n", [
-          "Capsule::Def ('{$componentData['componentName']}', function (\$args, CapsuleScopeContext \$scope) {",
-          join ("\n", $arguments),
-          "\n\t\$scope->componentSelectorReference = call_user_func ('App\View\generateComponentSelectorRef', '{$componentData['componentName']}');",
-          "\treturn Capsule::PartialRender ('Fragment', [], Capsule::CreateElement ('head', [], Capsule::CreateElement ('style', ['data-styled-component' => '{$componentData['componentName']}', 'data-styled-component-id' => \$scope->componentSelectorReference, 'type' => 'text/css'], function (\$args, CapsuleScopeContext \$scope) {return '$componentStyles';})), Capsule::CreateElement ('{$componentData['componentTagName']}', array_merge (ArrayHelper::PropsBeyond ([{$argumentNameList}], \$args), ['{$componentData['componentTagSelectorAttribute']}' => join (' ', [\$scope->componentSelectorReference, ((isset (\$args ['{$componentData['componentTagSelectorAttribute']}']) && is_string (\$args ['{$componentData['componentTagSelectorAttribute']}'])) ? \$args ['{$componentData['componentTagSelectorAttribute']}'] : '')])]), Capsule::Yield (null, [])));",
-          "});\n",
 
-          "Capsule::Export ('{$componentData['componentName']}');\n\n"
-        ]));
       }
 
       return join ('', $phpCapsuleCode);
